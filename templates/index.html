@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Executor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Python Code Executor</h1>
+    <textarea id="codeInput" placeholder="Enter your Python code here..."></textarea>
+    <button id="executeButton">Execute Code</button>
+
+    <div class="output" id="outputContainer" style="display:none;">
+        <h2>Output:</h2>
+        <pre id="output"></pre>
+        <h2>Error:</h2>
+        <pre id="error" class="error"></pre>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('executeButton').onclick = async () => {
+                const code = document.getElementById('codeInput').value;
+
+                const response = await fetch('http://127.0.0.1:5000/execute_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code: code })
+                });
+
+                const result = await response.json();
+
+                document.getElementById('outputContainer').style.display = 'block';
+                document.getElementById('output').innerText = result.output || 'No output';
+                document.getElementById('error').innerText = result.error || 'No errors';
+            };
+        });
+    </script>
+</body>
+</html>
