@@ -4,11 +4,14 @@ import os
 import signal
 import tempfile
 from flask_cors import CORS
+from flask import render_template
 from flasgger import Swagger, swag_from
 
 app = Flask(__name__)
 CORS(app) 
 swagger = Swagger(app)
+
+
 
 def sanitize_code(code):
     """
@@ -16,6 +19,12 @@ def sanitize_code(code):
     This function will ensure the code has valid syntax for execution.
     """
     return code  # No escaping needed for now since we're using subprocess
+
+
+@app.route('/')
+def index():
+    # Render the index.html template
+    return render_template('index.html')
 
 @app.route('/execute_code', methods=['POST'])
 @swag_from({
