@@ -3,75 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Code Executor</title>
+    <title>Python Code Analyzer</title>
     <style>
+        :root {
+            --primary-color: #28a745;
+            --primary-hover: #218838;
+            --border-color: #ccc;
+            --bg-light: #f8f9fa;
+            --error-color: #dc3545;
+            --text-color: #333;
+            --metric-bg: #e9ecef;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            color: var(--text-color);
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .code-section {
+            grid-column: 1;
+        }
+
+        .results-section {
+            grid-column: 2;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .code-section, .results-section {
+                grid-column: 1;
+            }
+        }
+
         textarea {
             width: 100%;
-            height: 200px;
+            height: 300px;
             margin-bottom: 10px;
-            padding: 10px;
+            padding: 15px;
             font-size: 16px;
-            border: 1px solid #ccc;
+            font-family: 'Courier New', monospace;
+            border: 1px solid var(--border-color);
             border-radius: 5px;
+            resize: vertical;
         }
+
         button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             font-size: 16px;
             border: none;
             border-radius: 5px;
-            background-color: #28a745;
+            background-color: var(--primary-color);
             color: white;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
+
         button:hover {
-            background-color: #218838;
+            background-color: var(--primary-hover);
         }
-        .output {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: var(--metric-bg);
+            padding: 15px;
             border-radius: 5px;
-            background-color: #f8f9fa;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
+        .metric-title {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .output-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--bg-light);
+        }
+
+        .output-section {
+            margin-bottom: 20px;
+        }
+
+        .output-section h3 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        pre {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 0;
+        }
+
         .error {
-            color: red;
+            color: var(--error-color);
+        }
+
+        #loadingSpinner {
+            display: none;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid var(--primary-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <h1>Python Code Executor</h1>
-    <textarea id="codeInput" placeholder="Enter your Python code here..."></textarea>
-    <button id="executeButton">Execute Code</button>
+    <h1>Python Code Analyzer</h1>
+    <div class="container">
+        <div class="code-section">
+            <h2>Code Input</h2>
+            <textarea id="codeInput" placeholder="Enter your Python code here..."></textarea>
+            <button id="executeButton">Analyze & Execute Code</button>
+            <div id="loadingSpinner">
+                <div class="loading"></div>
+                <p>Analyzing code...</p>
+            </div>
+        </div>
 
-    <div class="output" id="outputContainer" style="display:none;">
-        <h2>Output:</h2>
-        <pre id="output"></pre>
-        <h2>Error:</h2>
-        <pre id="error" class="error"></pre>
+        <div class="results-section">
+            <div class="output-container" id="outputContainer" style="display:none;">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-title">Execution Time</div>
+                        <div class="metric-value" id="executionTime">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Time Complexity</div>
+                        <div class="metric-value" id="timeComplexity">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Space Complexity</div>
+                        <div class="metric-value" id="spaceComplexity">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-title">Memory Usage</div>
+                        <div class="metric-value" id="memoryUsage">-</div>
+                    </div>
+                </div>
+
+                <div class="output-section">
+                    <h3>Output</h3>
+                    <pre id="output"></pre>
+                </div>
+
+                <div class="output-section">
+                    <h3>Errors</h3>
+                    <pre id="error" class="error"></pre>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('executeButton').onclick = async () => {
+            const executeButton = document.getElementById('executeButton');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            executeButton.onclick = async () => {
                 const code = document.getElementById('codeInput').value;
+                
+                // Show loading spinner and disable button
+                loadingSpinner.style.display = 'block';
+                executeButton.disabled = true;
+                
+                try {
+                    const response = await fetch('/execute_code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ code: code })
+                    });
 
-                const response = await fetch('https://coderunner-yrwm.onrender.com/execute_code', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code: code })
-                });
-
-                const result = await response.json();
-
-                document.getElementById('outputContainer').style.display = 'block';
-                document.getElementById('output').innerText = result.output || 'No output';
-                document.getElementById('error').innerText = result.error || 'No errors';
+                    const result = await response.json();
+                    
+                    // Display results
+                    document.getElementById('outputContainer').style.display = 'block';
+                    
+                    // Update metrics
+                    document.getElementById('executionTime').innerText = 
+                        `${(result.execution_time * 1000).toFixed(2)} ms`;
+                    document.getElementById('timeComplexity').innerText = 
+                        result.time_complexity || 'N/A';
+                    document.getElementById('spaceComplexity').innerText = 
+                        result.space_complexity || 'N/A';
+                    document.getElementById('memoryUsage').innerText = 
+                        result.memory_usage ? `${result.memory_usage.toFixed(2)} MB` : 'N/A';
+                    
+                    // Update output and errors
+                    document.getElementById('output').innerText = result.output || 'No output';
+                    document.getElementById('error').innerText = result.error || 'No errors';
+                    
+                } catch (error) {
+                    document.getElementById('outputContainer').style.display = 'block';
+                    document.getElementById('error').innerText = 'Failed to execute code: ' + error.message;
+                } finally {
+                    // Hide loading spinner and enable button
+                    loadingSpinner.style.display = 'none';
+                    executeButton.disabled = false;
+                }
             };
         });
     </script>
