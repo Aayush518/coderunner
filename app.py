@@ -18,7 +18,6 @@ swagger = Swagger(app)
 def analyze_time_complexity(code):
     """
     Analyze the time complexity of the code by examining its structure.
-    This is a basic analyzer that looks for common patterns.
     """
     try:
         tree = ast.parse(code)
@@ -28,12 +27,10 @@ def analyze_time_complexity(code):
         for node in ast.walk(tree):
             if isinstance(node, (ast.For, ast.While)):
                 loops += 1
-                # Check for nested loops
                 for child in ast.walk(node):
                     if isinstance(child, (ast.For, ast.While)) and child != node:
                         nested_loops += 1
         
-        # Basic complexity analysis
         if nested_loops > 0:
             return "O(n^2) - Quadratic time complexity detected due to nested loops"
         elif loops > 0:
@@ -43,46 +40,120 @@ def analyze_time_complexity(code):
     except:
         return "Unable to analyze time complexity"
 
-def measure_execution_time(func):
-    """
-    Decorator to measure execution time of a function
-    """
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        execution_time = end_time - start_time
-        return result, execution_time
-    return wrapper
-
-def measure_memory_usage(code):
-    """
-    Measure the memory usage of the code execution
-    """
-    tracemalloc.start()
-    start_memory = tracemalloc.get_traced_memory()
-    
-    # Execute the code
-    exec(code)
-    
-    current_memory = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    
-    peak_memory = current_memory[1] - start_memory[1]
-    return peak_memory
-
 def sanitize_code(code):
     """
     Sanitize the code input by ensuring it executes properly.
-    This function will ensure the code has valid syntax for execution.
     """
+    forbidden = ['os.system', 'subprocess', 'eval(', 'exec(', 'import os', 'import subprocess']
+    code_lower = code.lower()
+    for term in forbidden:
+        if term.lower() in code_lower:
+            raise ValueError(f"Forbidden code pattern detected: {term}")
     return code
+
+def execute_single_run(code, single_input):
+    """
+    Execute code once with a single input value.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write("""
+import time
+import sys
+from io import StringIO
+
+class OutputCapture:
+    def __init__(self):
+        self.buffer = StringIO()
+        self.input_mode = False
+        
+    def write(self, text):
+        if not self.input_mode:
+            self.buffer.write(text)
+            
+    def flush(self):
+        self.buffer.flush()
+    
+    def mark_input(self):
+        self.input_mode = True
+    
+    def unmark_input(self):
+        self.input_mode = False
+    
+    def get_output(self):
+        return self.buffer.getvalue()
+
+class InputHandler:
+    def __init__(self, input_value, output_capture):
+        self.input_value = input_value
+        self.output_capture = output_capture
+        self.used = False
+        
+    def input(self, prompt=''):
+        if prompt:
+            self.output_capture.mark_input()
+            sys.stdout.write(prompt)
+            sys.stdout.flush()
+            self.output_capture.unmark_input()
+            
+        if not self.used:
+            self.used = True
+            return self.input_value
+        return ''
+
+# Setup output capture
+output_capture = OutputCapture()
+sys.stdout = output_capture
+
+# Setup input handling
+input_handler = InputHandler(""" + repr(single_input) + """, output_capture)
+input = input_handler.input
+
+try:
+""")
+        # Indent the user's code
+        indented_code = '\n'.join('    ' + line for line in code.splitlines())
+        f.write(indented_code)
+        f.write("""
+
+finally:
+    # Get output
+    final_output = output_capture.get_output()
+    
+    # Restore stdout
+    sys.stdout = sys.__stdout__
+    
+    # Print output for parsing
+    print("===OUTPUT_START===")
+    print(final_output.rstrip())
+    print("===OUTPUT_END===")
+""")
+        temp_file = f.name
+
+    try:
+        result = subprocess.run(
+            [sys.executable, temp_file],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        # Extract output between markers
+        output = ""
+        if "===OUTPUT_START===" in result.stdout and "===OUTPUT_END===" in result.stdout:
+            output = result.stdout.split("===OUTPUT_START===")[1].split("===OUTPUT_END===")[0].strip()
+        
+        return output
+    finally:
+        try:
+            os.unlink(temp_file)
+        except:
+            pass
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/execute_code', methods=['POST'])
+@app.route('/api/execute_code', methods=['POST'])
 @swag_from({
     'tags': ['Code Execution'],
     'parameters': [
@@ -96,6 +167,10 @@ def index():
                     'code': {
                         'type': 'string',
                         'description': 'The Python code to be executed',
+                    },
+                    'inputs': {
+                        'type': 'string',
+                        'description': 'Multi-line input string where each line is an input value'
                     }
                 }
             }
@@ -103,117 +178,70 @@ def index():
     ],
     'responses': {
         '200': {
-            'description': 'Output of the executed code with analysis',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'output': {'type': 'string'},
-                    'error': {'type': 'string'},
-                    'execution_time': {'type': 'number'},
-                    'time_complexity': {'type': 'string'},
-                    'space_complexity': {'type': 'string'},
-                    'memory_usage': {'type': 'number'}
-                }
-            }
-        },
-        '400': {
-            'description': 'Invalid request or code'
+            'description': 'Output of the executed code with analysis'
         }
     }
 })
 def execute_code():
     """
-    Execute Python code and analyze its performance.
+    Execute Python code multiple times, once for each input line.
     """
     if not request.is_json:
-        return jsonify({'output': '', 'error': 'Request must be JSON'}), 400
+        return jsonify({'error': 'Request must be JSON'}), 400
 
     code = request.json.get('code', None)
+    input_text = request.json.get('inputs', '')
+    
     if code is None:
-        return jsonify({'output': '', 'error': 'No code provided'}), 400
-
-    sanitized_code = sanitize_code(code)
-    
-    # Analyze time complexity before execution
-    time_complexity = analyze_time_complexity(sanitized_code)
-    
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        # Add timing code
-        f.write("""
-import time
-start_time = time.time()
-""")
-        f.write(sanitized_code)
-        f.write("""
-end_time = time.time()
-print(f"\\n[Execution Time: {end_time - start_time:.6f} seconds]")
-""")
-        temp_file = f.name
-
-    output = ''
-    error = ''
-    execution_time = 0
-    memory_usage = 0
+        return jsonify({'error': 'No code provided'}), 400
 
     try:
-        # Start memory tracking
+        sanitized_code = sanitize_code(code)
+        time_complexity = analyze_time_complexity(sanitized_code)
+        
+        # Start memory and time tracking
         tracemalloc.start()
         start_memory = tracemalloc.get_traced_memory()
-
-        # Execute the code
-        proc = subprocess.Popen(
-            ['python3', temp_file],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            preexec_fn=os.setsid
-        )
-
-        try:
-            output, error = proc.communicate(timeout=10)
-        except subprocess.TimeoutExpired:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            error = "Error: Code execution time limit exceeded."
-            output = ''
-
-        # Get memory usage
+        start_time = time.time()
+        
+        # Split input text into lines and filter out empty lines
+        inputs = [line.strip() for line in input_text.split('\n') if line.strip()]
+        
+        # Execute code once for each input
+        all_outputs = []
+        for input_value in inputs:
+            output = execute_single_run(sanitized_code, input_value)
+            all_outputs.append(output)
+        
+        # Join all outputs with newlines
+        final_output = '\n'.join(all_outputs)
+        
+        # Get memory usage and execution time
         current_memory = tracemalloc.get_traced_memory()
         tracemalloc.stop()
         memory_usage = (current_memory[1] - start_memory[1]) / 1024 / 1024  # Convert to MB
+        execution_time = time.time() - start_time
 
-        output = output.decode('utf-8')
-        error = error.decode('utf-8')
-
-        # Extract execution time from output
-        if '[Execution Time:' in output:
-            execution_time = float(output.split('[Execution Time: ')[1].split(' seconds]')[0])
-            output = output.split('\n[Execution Time:')[0]  # Remove timing from output
+        return jsonify({
+            'output': final_output,
+            'error': '',
+            'execution_time': execution_time,
+            'time_complexity': time_complexity,
+            'space_complexity': f"O(n) - Used {memory_usage:.2f}MB",
+            'memory_usage': round(memory_usage, 2),
+            'inputs_used': inputs
+        })
 
     except Exception as e:
-        output = ''
-        error = f"Error: {str(e)}"
-        
-    finally:
-        try:
-            os.unlink(temp_file)
-        except Exception as cleanup_error:
-            error += f" Cleanup error: {str(cleanup_error)}"
-
-    # Estimate space complexity based on memory usage
-    if memory_usage < 1:  # Less than 1MB
-        space_complexity = "O(1) - Constant space complexity"
-    elif memory_usage < 10:  # Less than 10MB
-        space_complexity = "O(n) - Linear space complexity"
-    else:
-        space_complexity = "O(n^2) - Quadratic or higher space complexity"
-
-    return jsonify({
-        'output': output,
-        'error': error,
-        'execution_time': execution_time,
-        'time_complexity': time_complexity,
-        'space_complexity': space_complexity,
-        'memory_usage': round(memory_usage, 2)  # Memory usage in MB
-    })
+        return jsonify({
+            'output': '',
+            'error': f"Error: {str(e)}",
+            'execution_time': 0,
+            'time_complexity': time_complexity,
+            'space_complexity': 'N/A',
+            'memory_usage': 0,
+            'inputs_used': []
+        })
 
 if __name__ == '__main__':
     app.run(debug=True)

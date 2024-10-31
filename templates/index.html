@@ -1,253 +1,510 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Code Analyzer</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Python Code Executor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prismjs/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prismjs/1.29.0/components/prism-python.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/prismjs/1.29.0/themes/prism-tomorrow.min.css"
+    />
     <style>
-        :root {
-            --primary-color: #28a745;
-            --primary-hover: #218838;
-            --border-color: #ccc;
-            --bg-light: #f8f9fa;
-            --error-color: #dc3545;
-            --text-color: #333;
-            --metric-bg: #e9ecef;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            color: var(--text-color);
-            line-height: 1.6;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        background-color: #0f172a;
+        color: #e2e8f0;
+        padding: 2rem;
+      }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: #1e293b;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        padding: 2rem;
+      }
 
-        .code-section {
-            grid-column: 1;
-        }
+      h1 {
+        color: #f1f5f9;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+        border-bottom: 2px solid #334155;
+        padding-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
 
-        .results-section {
-            grid-column: 2;
-        }
+      .editor-container {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
 
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-            .code-section, .results-section {
-                grid-column: 1;
-            }
+      @media (max-width: 768px) {
+        .editor-container {
+          grid-template-columns: 1fr;
         }
+      }
 
-        textarea {
-            width: 100%;
-            height: 300px;
-            margin-bottom: 10px;
-            padding: 15px;
-            font-size: 16px;
-            font-family: 'Courier New', monospace;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            resize: vertical;
-        }
+      .section {
+        background-color: #1e293b;
+        border-radius: 8px;
+        border: 1px solid #334155;
+      }
 
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            background-color: var(--primary-color);
-            color: white;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
 
-        button:hover {
-            background-color: var(--primary-hover);
-        }
+      .editor-wrapper {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+      }
 
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
+      textarea {
+        width: 100%;
+        min-height: 300px;
+        padding: 1rem;
+        font-family: "Fira Code", monospace;
+        font-size: 0.9rem;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        resize: vertical;
+        background-color: #0f172a;
+        color: #e2e8f0;
+        line-height: 1.5;
+      }
 
-        .metric-card {
-            background: var(--metric-bg);
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+      textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      }
 
-        .metric-title {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 5px;
-        }
+      #inputs {
+        min-height: 150px;
+      }
 
-        .metric-value {
-            font-size: 16px;
-            font-weight: bold;
-        }
+      .button-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
 
-        .output-container {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background-color: var(--bg-light);
-        }
+      button {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
 
-        .output-section {
-            margin-bottom: 20px;
-        }
+      button:hover {
+        background-color: #2563eb;
+        transform: translateY(-1px);
+      }
 
-        .output-section h3 {
-            margin-bottom: 10px;
-            color: var(--text-color);
-        }
+      button:active {
+        transform: translateY(0);
+      }
 
-        pre {
-            background-color: white;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-            margin: 0;
-        }
+      button:disabled {
+        background-color: #64748b;
+        cursor: not-allowed;
+        transform: none;
+      }
 
-        .error {
-            color: var(--error-color);
-        }
+      .secondary-button {
+        background-color: #475569;
+      }
 
-        #loadingSpinner {
-            display: none;
-            margin: 20px 0;
-            text-align: center;
-        }
+      .secondary-button:hover {
+        background-color: #334155;
+      }
 
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid var(--primary-color);
-            animation: spin 1s linear infinite;
-        }
+      .results {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+      }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+      .result-card {
+        background-color: #0f172a;
+        padding: 1.25rem;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        transition: all 0.2s;
+      }
+
+      .result-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      }
+
+      .result-card h3 {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .result-content {
+        font-family: "Fira Code", monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #f1f5f9;
+        line-height: 1.6;
+      }
+
+      .error {
+        border-color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+      }
+
+      .loading {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
         }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        background-color: #334155;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .editor-wrapper:hover .copy-button {
+        opacity: 1;
+      }
+
+      /* Sample code dropdown */
+      .sample-code {
+        margin-bottom: 1rem;
+      }
+
+      select {
+        background-color: #1e293b;
+        color: #e2e8f0;
+        padding: 0.5rem;
+        border: 1px solid #334155;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+
+      select:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
     </style>
-</head>
-<body>
-    <h1>Python Code Analyzer</h1>
+  </head>
+  <body>
     <div class="container">
+      <h1>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+          ></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        Python Code Executor
+      </h1>
+
+      <div class="sample-code">
+        <select id="sampleSelect" onchange="loadSampleCode()">
+          <option value="">Select a sample code...</option>
+          <option value="hello">Hello World</option>
+          <option value="calculator">Simple Calculator</option>
+          <option value="squares">Number Squares</option>
+        </select>
+      </div>
+
+      <div class="editor-container">
         <div class="code-section">
-            <h2>Code Input</h2>
-            <textarea id="codeInput" placeholder="Enter your Python code here..."></textarea>
-            <button id="executeButton">Analyze & Execute Code</button>
-            <div id="loadingSpinner">
-                <div class="loading"></div>
-                <p>Analyzing code...</p>
-            </div>
+          <p class="section-title">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M20 12V8h-4"></path>
+              <path d="M4 12v4h4"></path>
+              <path d="M8 8l8 8"></path>
+            </svg>
+            Python Code
+          </p>
+          <div class="editor-wrapper">
+            <textarea id="code" spellcheck="false">
+# Enter your Python code here
+print("Hello, World!")</textarea
+            >
+            <button class="copy-button" onclick="copyCode()">Copy</button>
+          </div>
         </div>
-
-        <div class="results-section">
-            <div class="output-container" id="outputContainer" style="display:none;">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-title">Execution Time</div>
-                        <div class="metric-value" id="executionTime">-</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">Time Complexity</div>
-                        <div class="metric-value" id="timeComplexity">-</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">Space Complexity</div>
-                        <div class="metric-value" id="spaceComplexity">-</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-title">Memory Usage</div>
-                        <div class="metric-value" id="memoryUsage">-</div>
-                    </div>
-                </div>
-
-                <div class="output-section">
-                    <h3>Output</h3>
-                    <pre id="output"></pre>
-                </div>
-
-                <div class="output-section">
-                    <h3>Errors</h3>
-                    <pre id="error" class="error"></pre>
-                </div>
-            </div>
+        <div class="input-section">
+          <p class="section-title">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Inputs
+          </p>
+          <textarea
+            id="inputs"
+            spellcheck="false"
+            placeholder="Enter your inputs here (one per line)"
+          ></textarea>
         </div>
+      </div>
+
+      <div class="button-container">
+        <button id="executeBtn" onclick="executeCode()">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Execute Code
+        </button>
+        <button class="secondary-button" onclick="clearAll()">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
+          Clear All
+        </button>
+      </div>
+
+      <div class="results" id="results"></div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const executeButton = document.getElementById('executeButton');
-            const loadingSpinner = document.getElementById('loadingSpinner');
+      const sampleCodes = {
+        hello: {
+          code: '# Simple Hello World program\nname = input("What is your name? ")\nprint(f"Hello, {name}!")',
+          inputs: "Alice",
+        },
+        calculator: {
+          code: '# Simple calculator\nnum1 = float(input("Enter first number: "))\nnum2 = float(input("Enter second number: "))\nop = input("Enter operation (+,-,*,/): ")\n\nif op == "+":\n    result = num1 + num2\nelif op == "-":\n    result = num1 - num2\nelif op == "*":\n    result = num1 * num2\nelif op == "/":\n    result = num1 / num2 if num2 != 0 else "Error: Division by zero"\nelse:\n    result = "Invalid operation"\n\nprint(f"Result: {result}")',
+          inputs: "10\n5\n+",
+        },
+        squares: {
+          code: '# Calculate squares of numbers\nn = int(input("How many numbers? "))\nfor i in range(n):\n    num = int(input(f"Enter number {i+1}: "))\n    print(f"The square of {num} is {num * num}")',
+          inputs: "3\n4\n5\n6",
+        },
+      };
 
-            executeButton.onclick = async () => {
-                const code = document.getElementById('codeInput').value;
-                
-                // Show loading spinner and disable button
-                loadingSpinner.style.display = 'block';
-                executeButton.disabled = true;
-                
-                try {
-                    const response = await fetch('/execute_code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ code: code })
-                    });
+      function loadSampleCode() {
+        const select = document.getElementById("sampleSelect");
+        const sample = sampleCodes[select.value];
+        if (sample) {
+          document.getElementById("code").value = sample.code;
+          document.getElementById("inputs").value = sample.inputs;
+        }
+      }
 
-                    const result = await response.json();
-                    
-                    // Display results
-                    document.getElementById('outputContainer').style.display = 'block';
-                    
-                    // Update metrics
-                    document.getElementById('executionTime').innerText = 
-                        `${(result.execution_time * 1000).toFixed(2)} ms`;
-                    document.getElementById('timeComplexity').innerText = 
-                        result.time_complexity || 'N/A';
-                    document.getElementById('spaceComplexity').innerText = 
-                        result.space_complexity || 'N/A';
-                    document.getElementById('memoryUsage').innerText = 
-                        result.memory_usage ? `${result.memory_usage.toFixed(2)} MB` : 'N/A';
-                    
-                    // Update output and errors
-                    document.getElementById('output').innerText = result.output || 'No output';
-                    document.getElementById('error').innerText = result.error || 'No errors';
-                    
-                } catch (error) {
-                    document.getElementById('outputContainer').style.display = 'block';
-                    document.getElementById('error').innerText = 'Failed to execute code: ' + error.message;
-                } finally {
-                    // Hide loading spinner and enable button
-                    loadingSpinner.style.display = 'none';
-                    executeButton.disabled = false;
-                }
-            };
-        });
+      function copyCode() {
+        const codeArea = document.getElementById("code");
+        codeArea.select();
+        document.execCommand("copy");
+      }
+
+      function clearAll() {
+        document.getElementById("code").value = "# Enter your Python code here";
+        document.getElementById("inputs").value = "";
+        document.getElementById("results").innerHTML = "";
+        document.getElementById("sampleSelect").value = "";
+      }
+
+      async function executeCode() {
+        const executeBtn = document.getElementById("executeBtn");
+        const resultsDiv = document.getElementById("results");
+        const code = document.getElementById("code").value;
+        const inputs = document.getElementById("inputs").value;
+
+        executeBtn.disabled = true;
+        executeBtn.classList.add("loading");
+        resultsDiv.innerHTML =
+          '<div class="result-card"><h3>Executing...</h3></div>';
+
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:5000/api/execute_code",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ code, inputs }),
+            }
+          );
+
+          const data = await response.json();
+          displayResults(data);
+        } catch (error) {
+          displayResults({
+            error: "Failed to connect to server",
+            output: "",
+            execution_time: 0,
+            time_complexity: "N/A",
+            space_complexity: "N/A",
+            memory_usage: 0,
+            inputs_used: [],
+          });
+        }
+
+        executeBtn.disabled = false;
+        executeBtn.classList.remove("loading");
+      }
+
+      function displayResults(data) {
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = `
+                <div class="result-card ${data.error ? "error" : ""}">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        Output
+                    </h3>
+                    <div class="result-content">
+                        ${data.error || data.output || "No output"}
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        Execution Details
+                    </h3>
+                    <div class="result-content">
+                        Time: ${data.execution_time.toFixed(4)}s
+                        Memory: ${(data.memory_usage / 1024 / 1024).toFixed(
+                          2
+                        )} MB
+                        Time Complexity: ${data.time_complexity}
+                        Space Complexity: ${data.space_complexity}
+                    </div>
+                </div>
+
+                <div class="result-card">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Inputs Used
+                    </h3>
+                    <div class="result-content">
+                        ${
+                          data.inputs_used.length
+                            ? data.inputs_used.join("\n")
+                            : "No inputs used"
+                        }
+                    </div>
+                </div>`;
+      }
+
+      // Initialize syntax highlighting
+      Prism.highlightAll();
+
+      // Add keyboard shortcut for execution (Ctrl/Cmd + Enter)
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          executeCode();
+        }
+      });
+
+      // Add keyboard shortcut for clearing (Ctrl/Cmd + Shift + K)
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "K") {
+          clearAll();
+        }
+      });
     </script>
-</body>
+  </body>
 </html>
