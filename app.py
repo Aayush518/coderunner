@@ -51,7 +51,7 @@ def sanitize_code(code):
             raise ValueError(f"Forbidden code pattern detected: {term}")
     return code
 
-def execute_single_run(code, single_input):
+def execute_single_run(code, single_input=None):
     """
     Execute code once with a single input value.
     """
@@ -95,7 +95,7 @@ class InputHandler:
             sys.stdout.flush()
             self.output_capture.unmark_input()
             
-        if not self.used:
+        if not self.used and self.input_value is not None:
             self.used = True
             return self.input_value
         return ''
@@ -105,7 +105,7 @@ output_capture = OutputCapture()
 sys.stdout = output_capture
 
 # Setup input handling
-input_handler = InputHandler(""" + repr(single_input) + """, output_capture)
+input_handler = InputHandler(""" + (repr(single_input) if single_input is not None else "None") + """, output_capture)
 input = input_handler.input
 
 try:
@@ -204,14 +204,20 @@ def execute_code():
         start_memory = tracemalloc.get_traced_memory()
         start_time = time.time()
         
-        # Split input text into lines and filter out empty lines
-        inputs = [line.strip() for line in input_text.split('\n') if line.strip()]
-        
-        # Execute code once for each input
-        all_outputs = []
-        for input_value in inputs:
-            output = execute_single_run(sanitized_code, input_value)
-            all_outputs.append(output)
+        # Handle empty input case
+        if not input_text.strip():
+            # Execute once with no input
+            output = execute_single_run(sanitized_code, None)
+            all_outputs = [output]
+            inputs = []
+        else:
+            # Split input text into lines and filter out empty lines
+            inputs = [line.strip() for line in input_text.split('\n') if line.strip()]
+            # Execute code once for each input
+            all_outputs = []
+            for input_value in inputs:
+                output = execute_single_run(sanitized_code, input_value)
+                all_outputs.append(output)
         
         # Join all outputs with newlines
         final_output = '\n'.join(all_outputs)
